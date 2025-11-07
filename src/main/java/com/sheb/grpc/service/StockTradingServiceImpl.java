@@ -36,7 +36,7 @@ public class StockTradingServiceImpl extends StockTradingServiceGrpc.StockTradin
         responseObserver.onCompleted();
     }
     @Override
-    public void addStockPrice(StockRequest request,
+    public void buyStock(StockRequest request,
                               StreamObserver<StockResponse> responseObserver) {
         //stockName -> DB -> map response -> return
 
@@ -53,7 +53,7 @@ public class StockTradingServiceImpl extends StockTradingServiceGrpc.StockTradin
         responseObserver.onCompleted();
     }
     @Override
-    public void addStock(StockRequest request,
+    public void sellStock(StockRequest request,
                               StreamObserver<StockResponse> responseObserver) {
         //stockName -> DB -> map response -> return
         String stockSymbol = request.getStockSymbol();
@@ -70,10 +70,10 @@ public class StockTradingServiceImpl extends StockTradingServiceGrpc.StockTradin
         responseObserver.onCompleted();
     }
     @Override
-    public void getServerStream(HelloRequest request, StreamObserver<HelloResponse> responseObserver) {
+    public void getPositionStream(StockRequest request, StreamObserver<StockResponse> responseObserver) {
         for (int i = 0; i < 5; i++) {
-            HelloResponse response = HelloResponse.newBuilder()
-                    .setMessage("Hello, " + request.getName() + " " + i)
+            StockResponse response = StockResponse.newBuilder()
+                    .setMessage("Hello, " + request.getStockSymbol() + " " + i)
                     .build();
             responseObserver.onNext(response);
         }
@@ -81,16 +81,16 @@ public class StockTradingServiceImpl extends StockTradingServiceGrpc.StockTradin
     }
 
     @Override
-    public StreamObserver<HelloRequest> getClientStream(StreamObserver<HelloResponse> responseObserver) {
+    public StreamObserver<StockRequest> addToFunds(StreamObserver<StockResponse> responseObserver) {
         // The server will process the requests sent by the client
-        return new StreamObserver<HelloRequest>() {
+        return new StreamObserver<StockRequest>() {
             private int count = 0;
 
             @Override
-            public void onNext(HelloRequest request) {
+            public void onNext(StockRequest request) {
                 // Handle each incoming request
                 count++;
-                System.out.println("Received request " + count + ": " + request.getName());
+                System.out.println("Received request " + count + ": " + request.getStockSymbol());
             }
 
             @Override
@@ -102,46 +102,11 @@ public class StockTradingServiceImpl extends StockTradingServiceGrpc.StockTradin
             @Override
             public void onCompleted() {
                 // Once the client finishes sending data, respond with a single response
-                HelloResponse response = HelloResponse.newBuilder()
+                StockResponse response = StockResponse.newBuilder()
                         .setMessage("Received " + count + " requests.")
                         .build();
                 responseObserver.onNext(response);  // Send the response to the client
                 responseObserver.onCompleted();     // Complete the response stream
-            }
-        };
-    }
-    @Override
-    public StreamObserver<ChatMessage> chat(StreamObserver<ChatMessage> responseObserver) {
-        // This is the server-side stream observer, which listens for incoming messages from the client.
-        return new StreamObserver<ChatMessage>() {
-
-            @Override
-            public void onNext(ChatMessage chatMessage) {
-                // Process each incoming chat message from the client
-                System.out.println("Received message from " + chatMessage.getSender() + ": " + chatMessage.getMessage());
-
-                // Create a response message (for example, echoing back the same message)
-                ChatMessage response = ChatMessage.newBuilder()
-                        .setSender("Shebin")
-                        .setMessage("Echo: Hi HDFC")
-                        .setTimestamp(System.currentTimeMillis())
-                        .build();
-
-                // Send the response back to the client
-                responseObserver.onNext(response);
-            }
-
-            @Override
-            public void onError(Throwable t) {
-                // Handle any errors that occur during the stream processing
-                t.printStackTrace();
-            }
-
-            @Override
-            public void onCompleted() {
-                // Once the client finishes sending messages, the server ends the response stream
-                System.out.println("Client has finished the chat.");
-                responseObserver.onCompleted(); // Indicate that the server has completed sending responses
             }
         };
     }

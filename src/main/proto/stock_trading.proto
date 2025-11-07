@@ -10,11 +10,25 @@ option  java_outer_classname="StockTradingProto";
 service StockTradingService{
   // UNARY - RPC -> get current stock price
   rpc getStockPrice(StockRequest) returns (StockResponse);
-  rpc addStockPrice(StockRequest) returns (StockResponse);
-  rpc addStock(StockRequest) returns (StockResponse);
-  rpc GetServerStream (HelloRequest) returns (stream HelloResponse);
-  rpc GetClientStream (stream HelloRequest) returns (HelloResponse);
+  rpc buyStock(StockRequest) returns (StockResponse);
+  rpc sellStock(StockRequest) returns (StockResponse);
+  rpc getPositionStream (StockRequest) returns (stream StockResponse);
+  rpc addToFunds (stream StockRequest) returns (StockResponse);
+  //server streaming
+}
+service ChatService{
+  // UNARY - RPC -> get current stock price
+  rpc notifyCustomer (NotifyRequest) returns (stream HelloResponse);
+  rpc uploadDataToServer (stream DataRequest) returns (HelloResponse);
   rpc Chat(stream ChatMessage) returns (stream ChatMessage);
+  //server streaming
+}
+
+service FileTransferService{
+  // UNARY - RPC -> get current stock price
+  rpc downloadFiles (FileRequest) returns (stream FileResponse);
+  rpc uploadFiles (stream FileRequest) returns (FileResponse);
+  rpc transferFiles(stream ChatMessage) returns (stream ChatMessage);
   //server streaming
 }
 
@@ -23,21 +37,28 @@ message StockRequest{
   double price=2;
   string timestamp=3;
 }
-
 message StockResponse{
   string stock_symbol=1;
   double price=2;
   string timestamp=3;
+  string message = 4;
 }
-
-message HelloRequest {
+message NotifyRequest {
   string name = 1;
 }
-
+message DataRequest {
+  string name = 1;
+}
 message HelloResponse {
   string message = 1;
 }
-
+message FileRequest {
+  string name = 1;
+}
+message FileResponse {
+  bytes data = 1;
+  int32 size = 2;
+}
 message ChatMessage {
   string sender = 1;
   string message = 2;
