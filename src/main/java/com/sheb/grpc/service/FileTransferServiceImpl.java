@@ -7,12 +7,16 @@ import com.sheb.grpc.repository.StockRepository;
 import io.grpc.stub.StreamObserver;
 import org.springframework.grpc.server.service.GrpcService;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
 
 @GrpcService
 public class FileTransferServiceImpl extends FileTransferServiceGrpc.FileTransferServiceImplBase {
 
 
+    private static final String FILE_STORAGE_LOCATION = "C:\\Software\\";
     private final StockRepository stockRepository;
 
     public FileTransferServiceImpl(StockRepository stockRepository) {
@@ -21,13 +25,30 @@ public class FileTransferServiceImpl extends FileTransferServiceGrpc.FileTransfe
 
     @Override
     public void downloadFiles(FileRequest request, StreamObserver<FileResponse> responseObserver) {
-        for (int i = 0; i < 5; i++) {
-            FileResponse response = FileResponse.newBuilder()
-                    .setData(ByteString.copyFrom(("Hello, " + request.getName() + " " + i).getBytes()))
-                    .build();
-            responseObserver.onNext(response);
+        String filename = request.getName();
+        File file = new File(FILE_STORAGE_LOCATION + filename);
+
+        if (!file.exists() || !file.canRead()) {
+            responseObserver.onError(
+                    new RuntimeException("File not found or unreadable: " + filename)
+            );
+            return;
         }
-        responseObserver.onCompleted();
+
+        byte[] buffer = new byte[1024 * 64];
+        try (FileInputStream fis = new FileInputStream(file)) {
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                FileResponse chunk = FileResponse.newBuilder()
+                        .setData(ByteString.copyFrom(buffer, 0, bytesRead))
+                        .setSize((int) file.length())
+                        .build();
+                responseObserver.onNext(chunk);
+            }
+            responseObserver.onCompleted();
+        } catch (IOException e) {
+            responseObserver.onError(e);
+        }
     }
 
     @Override
