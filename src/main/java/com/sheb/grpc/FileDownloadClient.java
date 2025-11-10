@@ -6,9 +6,8 @@ import io.grpc.ManagedChannelBuilder;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class FileDownloadClient {
     private static final String INPUT_FILE_STORAGE_LOCATION = "200MB-TESTFILE.ORG.pdf";
@@ -34,19 +33,24 @@ public class FileDownloadClient {
                 .maxInboundMessageSize(100 * 1024 * 1024)  // 100 MB per message
                 .build();
 
-        FileTransferServiceGrpc.FileTransferServiceBlockingStub stub = FileTransferServiceGrpc.newBlockingStub(channel);
+        FileTransferServiceGrpc.FileTransferServiceBlockingStub stub = FileTransferServiceGrpc.newBlockingStub(channel).withDeadlineAfter(4, TimeUnit.SECONDS);;
 
         System.out.println("⬇️ Starting download of " + INPUT_FILE_STORAGE_LOCATION + " from gRPC server...");
 
         long start = System.currentTimeMillis();
         Long totalBytes = 0L;
-
+        AtomicInteger count = new AtomicInteger();
         try (FileOutputStream fos = new FileOutputStream(new File(OUTPUT_FILE_STORAGE_LOCATION))) {
 
             stub.downloadFiles(
                     FileRequest.newBuilder().setName(INPUT_FILE_STORAGE_LOCATION).build()
             ).forEachRemaining((FileResponse chunk) -> {
                 try {
+                    count.getAndIncrement();
+                    if (count.get() == 3) {
+                        System.out.println("Cancelling...");
+                        //channel.shutdownNow(); // 👈 this triggers server cancellation
+                    }
                     byte[] bytes = chunk.getData().toByteArray();
                     fos.write(bytes);
                     System.out.printf("✅ Download in progress: %,d bytes %n",

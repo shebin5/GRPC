@@ -4,6 +4,8 @@ import com.google.protobuf.ByteString;
 import com.sheb.grpc.*;
 import com.sheb.grpc.entity.Stock;
 import com.sheb.grpc.repository.StockRepository;
+import io.grpc.Context;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import org.springframework.grpc.server.service.GrpcService;
 
@@ -26,6 +28,11 @@ public class FileTransferServiceImpl extends FileTransferServiceGrpc.FileTransfe
     @Override
     public void downloadFiles(FileRequest request, StreamObserver<FileResponse> responseObserver) {
         String filename = request.getName();
+        if (request.getName().isEmpty()) {
+            throw Status.INVALID_ARGUMENT
+                    .withDescription("Name cannot be empty.")
+                    .asRuntimeException();
+        }
         File file = new File(FILE_STORAGE_LOCATION + filename);
 
         if (!file.exists() || !file.canRead()) {
@@ -34,11 +41,21 @@ public class FileTransferServiceImpl extends FileTransferServiceGrpc.FileTransfe
             );
             return;
         }
-
+        Context context = Context.current();
+        int count = 0;
         byte[] buffer = new byte[1024 * 64];
         try (FileInputStream fis = new FileInputStream(file)) {
             int bytesRead;
             while ((bytesRead = fis.read(buffer)) != -1) {
+                count++;
+                if (count > 50) {
+                    System.out.println("Client throw exception the stream for file: " + file.getName());
+                     throw new Exception("!!!!!!!!!!!!!!!!");
+                }
+                if (context.isCancelled()) {
+                    System.out.println("Client cancelled the stream for file: " + file.getName());
+                    break;
+                }
                 FileResponse chunk = FileResponse.newBuilder()
                         .setData(ByteString.copyFrom(buffer, 0, bytesRead))
                         .setSize((int) file.length())
@@ -48,6 +65,13 @@ public class FileTransferServiceImpl extends FileTransferServiceGrpc.FileTransfe
             responseObserver.onCompleted();
         } catch (IOException e) {
             responseObserver.onError(e);
+        } catch (Exception e) {
+            responseObserver.onError(
+                    Status.INTERNAL
+                            .withDescription("Internal server error!!!!!!!!!!: " + e.getMessage())
+                            .augmentDescription("Please contact support.")
+                            .asRuntimeException()
+            );
         }
     }
 
