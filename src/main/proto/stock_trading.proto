@@ -53,7 +53,8 @@ message HelloResponse {
   string message = 1;
 }
 message FileRequest {
-  string name = 1;
+  string id = 1;
+  string payload = 2;
 }
 message FileResponse {
   bytes data = 1;

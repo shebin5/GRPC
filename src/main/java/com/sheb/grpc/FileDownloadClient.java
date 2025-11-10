@@ -43,7 +43,7 @@ public class FileDownloadClient {
         try (FileOutputStream fos = new FileOutputStream(new File(OUTPUT_FILE_STORAGE_LOCATION))) {
 
             stub.downloadFiles(
-                    FileRequest.newBuilder().setName(INPUT_FILE_STORAGE_LOCATION).build()
+                    FileRequest.newBuilder().setId(INPUT_FILE_STORAGE_LOCATION).build()
             ).forEachRemaining((FileResponse chunk) -> {
                 try {
                     count.getAndIncrement();

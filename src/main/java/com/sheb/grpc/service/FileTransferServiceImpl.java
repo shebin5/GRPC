@@ -27,8 +27,8 @@ public class FileTransferServiceImpl extends FileTransferServiceGrpc.FileTransfe
 
     @Override
     public void downloadFiles(FileRequest request, StreamObserver<FileResponse> responseObserver) {
-        String filename = request.getName();
-        if (request.getName().isEmpty()) {
+        String filename = request.getId();
+        if (request.getId().isEmpty()) {
             throw Status.INVALID_ARGUMENT
                     .withDescription("Name cannot be empty.")
                     .asRuntimeException();
@@ -80,12 +80,16 @@ public class FileTransferServiceImpl extends FileTransferServiceGrpc.FileTransfe
         // The server will process the requests sent by the client
         return new StreamObserver<FileRequest>() {
             private int count = 0;
+            Context context = Context.current();
 
             @Override
-            public void onNext(FileRequest request) {
-                // Handle each incoming request
+            public void onNext(FileRequest chunk) {
+                if (context.isCancelled()) {
+                    System.out.println("Call was cancelled (deadline or manual).");
+                    return;
+                }
+                System.out.println("Received chunk: " + chunk.getPayload());
                 count++;
-                System.out.println("Received request " + count + ": " + request.getName());
             }
 
             @Override
@@ -96,12 +100,13 @@ public class FileTransferServiceImpl extends FileTransferServiceGrpc.FileTransfe
 
             @Override
             public void onCompleted() {
-                // Once the client finishes sending data, respond with a single response
-                FileResponse response = FileResponse.newBuilder()
-                        .setData(ByteString.fromHex("Received " + count + " requests."))
+                System.out.println("All chunks received: " + count);
+                FileResponse status = FileResponse.newBuilder()
+                        .setData(ByteString.copyFromUtf8("Upload complete."))
+                        .setSize(count)
                         .build();
-                responseObserver.onNext(response);  // Send the response to the client
-                responseObserver.onCompleted();     // Complete the response stream
+                responseObserver.onNext(status);
+                responseObserver.onCompleted();    // Complete the response stream
             }
         };
     }
